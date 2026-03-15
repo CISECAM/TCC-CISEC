@@ -147,3 +147,10 @@ def buscar_contatos(termo):
     contatos = [dict(row) for row in cursor.fetchall()]
     conn.close()
     return contatos
+
+def get_connection():
+    """Retorna conexão com o banco"""
+    import sqlite3
+    conn = sqlite3.connect('cisec_bot.db')
+    conn.row_factory = sqlite3.Row
+    return conn

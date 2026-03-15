@@ -2,34 +2,58 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from database.db import usuario_existe, get_usuario
 
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Menu principal do bot"""
+    """Tela inicial - Apenas Login e Cadastro"""
     user = update.effective_user
     
-    # Verifica se está logado
-    esta_logado = usuario_existe(user.id)
+    #==================================#
+    # Limpa dados de sessão anteriores #
+    #==================================#
+    context.user_data.clear()
+
+    #=======================================================#
+    # SEMPRE mostra apenas Login e Cadastro na tela inicial #
+    #=======================================================#
     
-    # Botões do menu
     keyboard = [
-        [InlineKeyboardButton("📋 Cadastrar", callback_data='cadastro')],
         [InlineKeyboardButton("🔐 Login", callback_data='login')],
+        [InlineKeyboardButton("📝 Cadastrar", callback_data='cadastro')]
     ]
-    
-    if esta_logado:
-        keyboard.append([InlineKeyboardButton("📞 Ver Contatos", callback_data='contatos')])
-        keyboard.append([InlineKeyboardButton("🔍 Buscar", callback_data='buscar')])
     
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    if esta_logado:
-        usuario = get_usuario(user.id)
-        mensagem = f"👋 Olá, {usuario['nome']}!\n\nBem-vindo ao *CISEC* - Guia de Emergências do seu bairro."
-    else:
-        mensagem = f"👋 Olá, {user.first_name}!\n\nBem-vindo ao *CISEC* - Guia de Emergências do seu bairro.\n\nCadastre-se ou faça login para acessar os contatos."
-    
-    await update.message.reply_text(
-        mensagem,
-        reply_markup=reply_markup,
-        parse_mode='Markdown'
+    mensagem = (
+        f"👋 Olá, {user.first_name}!\n\n"
+        f"Bem-vindo ao *CISEC* - Guia de Emergências do seu bairro.\n\n"
+        f"🔐 Já tem cadastro? Faça *Login*\n"
+        f"📝 Novo aqui? *Cadastre-se*"
     )
+    
+    #=============================================#
+    # Se veio de callback (botão), edita mensagem #
+    #=============================================#
+
+    if update.callback_query:
+        await update.callback_query.answer()
+        await update.callback_query.edit_message_text(
+            mensagem,
+            reply_markup=reply_markup,
+            parse_mode='Markdown'
+        )
+    else:
+
+        #================================================#
+        # Se veio de comando /start, envia nova mensagem #
+        #================================================#
+        
+        await update.message.reply_text(
+            mensagem,
+            reply_markup=reply_markup,
+            parse_mode='Markdown'
+        )
+
+async def voltar_inicio(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Volta para tela inicial de login/cadastro"""
+    query = update.callback_query
+    await query.answer()
+    await start(update, context)
