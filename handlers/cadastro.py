@@ -1,22 +1,44 @@
 from telegram import Update
 from telegram.ext import ContextTypes, ConversationHandler
-from database.db import cadastrar_usuario, usuario_existe
+from database.db import cadastrar_hospede, hospede_existe, validar_chave_acesso
 
 # Estados da conversa
-NOME, TELEFONE, CEP, SENHA = range(4)
+CHAVE_ACESSO, NOME, TELEFONE, QUARTO, SENHA = range(5)
 
 async def iniciar_cadastro(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Inicia fluxo de cadastro"""
+    """Inicia fluxo de cadastro com chave de acesso"""
     query = update.callback_query
     await query.answer()
 
     user_id = update.effective_user.id
 
-    if usuario_existe(user_id):
-        await query.edit_message_text("❌ Você já está cadastrado!")
+    if hospede_existe(user_id):
+        await query.edit_message_text("❌ Você já está cadastrado neste hotel!")
         return ConversationHandler.END
 
-    await query.edit_message_text("📋 *Cadastro*\n\nQual seu nome completo?", parse_mode='Markdown')
+    await query.edit_message_text(
+        "🏨 *Bem-vindo ao Hotel!*\n\n"
+        "Para se cadastrar, digite sua *Chave de Acesso*:\n"
+        "_(Fornecida na recepção)_",
+        parse_mode='Markdown'
+    )
+    return CHAVE_ACESSO
+
+async def receber_chave(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Valida chave de acesso"""
+    chave = update.message.text.strip()
+    
+    if not validar_chave_acesso(chave):
+        await update.message.reply_text(
+            "❌ *Chave inválida ou já utilizada!*\n\n"
+            "Verifique com a recepção ou tente novamente:",
+            parse_mode='Markdown'
+        )
+        return CHAVE_ACESSO
+    
+    # Chave válida, salva e continua
+    context.user_data['chave_acesso'] = chave
+    await update.message.reply_text("✅ Chave válida!\n\nQual seu nome completo?")
     return NOME
 
 async def receber_nome(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -26,12 +48,12 @@ async def receber_nome(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def receber_telefone(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['telefone'] = update.message.text
-    await update.message.reply_text("📍 Qual seu CEP? (Ex: 01001000)")
-    return CEP
+    await update.message.reply_text("🚪 Qual o número do seu quarto? (Ex: 205)")
+    return QUARTO
 
-async def receber_cep(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['cep'] = update.message.text
-    await update.message.reply_text("🔑 Crie uma senha (mínimo 6 caracteres):")
+async def receber_quarto(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data['quarto'] = update.message.text
+    await update.message.reply_text("🔑 Crie uma senha para acessar o app (mínimo 6 caracteres):")
     return SENHA
 
 async def receber_senha(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -43,18 +65,20 @@ async def receber_senha(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return SENHA
 
     # Cadastra no banco
-    sucesso = cadastrar_usuario(
+    sucesso = cadastrar_hospede(
         telegram_id=user_id,
         nome=context.user_data['nome'],
         telefone=context.user_data['telefone'],
-        cep=context.user_data['cep'],
-        senha=senha
+        quarto=context.user_data['quarto'],
+        senha=senha,
+        chave_acesso=context.user_data['chave_acesso']
     )
 
     if sucesso:
         await update.message.reply_text(
-            "✅ *Cadastro realizado com sucesso!*\n\n"
-            "Use /start para acessar o menu.",
+            "✅ *Check-in realizado com sucesso!*\n\n"
+            f"Quarto: {context.user_data['quarto']}\n"
+            "Use /start para acessar os serviços do hotel.",
             parse_mode='Markdown'
         )
     else:

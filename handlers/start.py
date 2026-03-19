@@ -1,38 +1,29 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
-from database.db import usuario_existe, get_usuario
+from database.db import hospede_existe, get_hospede
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Tela inicial - Apenas Login e Cadastro"""
+    """Tela inicial do Hotel"""
     user = update.effective_user
     
-    #==================================#
-    # Limpa dados de sessão anteriores #
-    #==================================#
+    # Limpa dados de sessão anteriores
     context.user_data.clear()
-
-    #=======================================================#
-    # SEMPRE mostra apenas Login e Cadastro na tela inicial #
-    #=======================================================#
     
+    # SEMPRE mostra apenas Login e Cadastro na tela inicial
     keyboard = [
         [InlineKeyboardButton("🔐 Login", callback_data='login')],
-        [InlineKeyboardButton("📝 Cadastrar", callback_data='cadastro')]
+        [InlineKeyboardButton("📝 Check-in (Cadastrar)", callback_data='cadastro')]
     ]
     
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     mensagem = (
-        f"👋 Olá, {user.first_name}!\n\n"
-        f"Bem-vindo ao *CISEC* - Guia de Emergências do seu bairro.\n\n"
-        f"🔐 Já tem cadastro? Faça *Login*\n"
-        f"📝 Novo aqui? *Cadastre-se*"
+        f"🏨 *Bem-vindo ao Hotel!*\n\n"
+        f"Olá, {user.first_name}!\n\n"
+        f"🔐 Já é hóspede? Faça *Login*\n"
+        f"📝 Novo hóspede? Faça *Check-in*"
     )
     
-    #=============================================#
-    # Se veio de callback (botão), edita mensagem #
-    #=============================================#
-
     if update.callback_query:
         await update.callback_query.answer()
         await update.callback_query.edit_message_text(
@@ -41,11 +32,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode='Markdown'
         )
     else:
-
-        #================================================#
-        # Se veio de comando /start, envia nova mensagem #
-        #================================================#
-        
         await update.message.reply_text(
             mensagem,
             reply_markup=reply_markup,
@@ -53,7 +39,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 async def voltar_inicio(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Volta para tela inicial de login/cadastro"""
+    """Volta para tela inicial"""
     query = update.callback_query
     await query.answer()
     await start(update, context)

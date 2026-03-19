@@ -13,17 +13,18 @@ from database.db import init_db
 # Importa handlers
 from handlers.start import start, voltar_inicio
 from handlers.cadastro import (
-    iniciar_cadastro, receber_nome, receber_telefone,
-    receber_cep, receber_senha, cancelar, NOME, TELEFONE, CEP, SENHA
+    iniciar_cadastro, receber_chave, receber_nome, receber_telefone,
+    receber_quarto, receber_senha, cancelar, 
+    CHAVE_ACESSO, NOME, TELEFONE, QUARTO, SENHA
 )
 from handlers.login import (
     iniciar_login, verificar_senha, cancelar_login, MENU_LOGADO
 )
-from handlers.contatos import (
-    mostrar_categorias, mostrar_contatos, iniciar_busca, realizar_busca
+from handlers.servicos import (
+    mostrar_categorias, mostrar_servicos, iniciar_busca, 
+    realizar_busca, meu_quarto, menu_logado
 )
-from handlers.faz_tudo import mostrar_faz_tudo, menu_logado
-from handlers.pessoas import mostrar_pessoas
+from handlers.hospedes import mostrar_hospedes
 
 # Carrega .env
 load_dotenv()
@@ -43,22 +44,23 @@ if not TOKEN:
 init_db()
 
 def main():
-    """Inicia o bot"""
+    """Inicia o bot do Hotel"""
     app = Application.builder().token(TOKEN).build()
 
-    # Handler de cadastro (conversa em etapas)
+    # Handler de cadastro (com chave de acesso)
     cadastro_handler = ConversationHandler(
         entry_points=[CallbackQueryHandler(iniciar_cadastro, pattern='^cadastro$')],
         states={
+            CHAVE_ACESSO: [MessageHandler(filters.TEXT & ~filters.COMMAND, receber_chave)],
             NOME: [MessageHandler(filters.TEXT & ~filters.COMMAND, receber_nome)],
             TELEFONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receber_telefone)],
-            CEP: [MessageHandler(filters.TEXT & ~filters.COMMAND, receber_cep)],
+            QUARTO: [MessageHandler(filters.TEXT & ~filters.COMMAND, receber_quarto)],
             SENHA: [MessageHandler(filters.TEXT & ~filters.COMMAND, receber_senha)],
         },
         fallbacks=[CommandHandler('cancelar', cancelar)],
     )
 
-    # Handler de login (conversa em etapas)
+    # Handler de login
     login_handler = ConversationHandler(
         entry_points=[CallbackQueryHandler(iniciar_login, pattern='^login$')],
         states={
@@ -72,19 +74,19 @@ def main():
     app.add_handler(cadastro_handler)
     app.add_handler(login_handler)
     
-    # Handlers de callback (botões)
-    app.add_handler(CallbackQueryHandler(mostrar_categorias, pattern='^contatos$'))
-    app.add_handler(CallbackQueryHandler(mostrar_contatos, pattern='^cat_'))
+    # Callbacks
+    app.add_handler(CallbackQueryHandler(mostrar_categorias, pattern='^servicos$'))
+    app.add_handler(CallbackQueryHandler(mostrar_servicos, pattern='^serv_'))
     app.add_handler(CallbackQueryHandler(iniciar_busca, pattern='^buscar$'))
     app.add_handler(CallbackQueryHandler(voltar_inicio, pattern='^voltar_inicio$'))
-    app.add_handler(CallbackQueryHandler(mostrar_faz_tudo, pattern='^faz_tudo$'))
-    app.add_handler(CallbackQueryHandler(mostrar_pessoas, pattern='^pessoas$'))
+    app.add_handler(CallbackQueryHandler(meu_quarto, pattern='^meu_quarto$'))
+    app.add_handler(CallbackQueryHandler(mostrar_hospedes, pattern='^hospedes$'))
     app.add_handler(CallbackQueryHandler(menu_logado, pattern='^menu_logado$'))
 
-    # Handlers de mensagens 
+    # Mensagens
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, realizar_busca))
 
-    print("Bot CISEC iniciado! Pressione Ctrl+C para parar.")
+    print("🏨 Bot do Hotel iniciado! Pressione Ctrl+C para parar.")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
